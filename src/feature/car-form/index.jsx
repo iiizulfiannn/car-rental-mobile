@@ -1,7 +1,7 @@
 import { useFormik } from 'formik';
 import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { Button, TextInput } from 'react-native-paper';
+import { Button, HelperText, Text, TextInput } from 'react-native-paper';
 import RNFetchBlob from 'react-native-blob-util';
 
 import CarTypeDialog from './CarTypeDialog';
@@ -13,49 +13,78 @@ const CarForm = ({ submit, initialValues }) => {
   const [imageUri, setImageUri] = useState(null);
   const [localImageUri, setLocalImageUri] = useState(null);
 
-  const { values, handleChange, setFieldValue, handleSubmit } = useFormik({
-    initialValues: initialValues
-      ? {
-          ...initialValues,
-          rating: initialValues.rating.toString(),
-          hourRate: initialValues.hourRate.toString(),
-          dayRate: initialValues.dayRate.toString(),
-          monthRate: initialValues.monthRate.toString(),
+  const { values, handleChange, setFieldValue, handleSubmit, errors, isValid, handleBlur } =
+    useFormik({
+      validateOnMount: true,
+      initialValues: initialValues
+        ? {
+            ...initialValues,
+            rating: initialValues.rating.toString(),
+            hourRate: initialValues.hourRate.toString(),
+            dayRate: initialValues.dayRate.toString(),
+            monthRate: initialValues.monthRate.toString(),
+          }
+        : {
+            name: 'Toyota 425',
+            carType: 'Crossover',
+            rating: '4',
+            fuel: 'Eletric',
+            image: null,
+            hourRate: '544',
+            dayRate: '222',
+            monthRate: '66',
+          },
+      onSubmit: async (form) => {
+        const request = {
+          ...form,
+          image: {
+            uri: localImageUri || imageUri,
+            name: `${form.name}.png`,
+            type: 'image/png',
+            mimetype: 'image/png',
+          },
+          rating: parseInt(form.rating),
+          hourRate: parseInt(form.hourRate),
+          dayRate: parseInt(form.dayRate),
+          monthRate: parseInt(form.monthRate),
+        };
+
+        const data = new FormData();
+
+        for (const [key, value] of Object.entries(request)) {
+          data.append(key, value);
         }
-      : {
-          name: 'Toyota 425',
-          carType: 'Crossover',
-          rating: '4',
-          fuel: 'Eletric',
-          image: null,
-          hourRate: '544',
-          dayRate: '222',
-          monthRate: '66',
-        },
-    onSubmit: async (form) => {
-      const request = {
-        ...form,
-        image: {
-          uri: localImageUri || imageUri,
-          name: `${form.name}.png`,
-          type: 'image/png',
-          mimetype: 'image/png',
-        },
-        rating: parseInt(form.rating),
-        hourRate: parseInt(form.hourRate),
-        dayRate: parseInt(form.dayRate),
-        monthRate: parseInt(form.monthRate),
-      };
 
-      const data = new FormData();
+        submit(data);
+      },
+      validate: (values) => {
+        const errors = {};
+        if (
+          parseInt(values.hourRate) > parseInt(values.dayRate) ||
+          parseInt(values.hourRate) > parseInt(values.monthRate)
+        ) {
+          errors.hourRate = 'Hour rate must less than Day / Month Rate';
+        }
 
-      for (const [key, value] of Object.entries(request)) {
-        data.append(key, value);
-      }
+        if (parseInt(values.dayRate) > parseInt(values.monthRate)) {
+          errors.dayRate = 'DayRate rate must less than Month Rate';
+        }
+        if (parseInt(values.dayRate) < parseInt(values.hourRate)) {
+          errors.dayRate = 'DayRate rate must greater than Hour Rate';
+        }
 
-      submit(data);
-    },
-  });
+        if (parseInt(values.monthRate) < parseInt(values.hourRate)) {
+          errors.monthRate = 'Month Rate rate must greater than Hour Rate';
+        }
+        if (parseInt(values.monthRate) < parseInt(values.dayRate)) {
+          errors.monthRate = 'Month Rate rate must greater than Day Rate';
+        }
+
+        return errors;
+      },
+    });
+
+  console.log({ errors });
 
   const [visibleCarType, setVisibleCarType] = useState(false);
   const openCarType = () => setVisibleCarType(true);
@@ -144,29 +173,59 @@ const CarForm = ({ submit, initialValues }) => {
               />
             </Pressable>
           </View>
-          <TextInput
-            label="Hour Rate"
-            mode="outlined"
-            value={values.hourRate}
-            onChangeText={handleChange('hourRate')}
-            keyboardType="numeric"
-          />
-          <TextInput
-            label="Day Rate"
-            mode="outlined"
-            value={values.dayRate}
-            onChangeText={handleChange('dayRate')}
-            keyboardType="numeric"
-          />
-          <TextInput
-            label="Month Rate"
-            mode="outlined"
-            value={values.monthRate}
-            onChangeText={handleChange('monthRate')}
-            keyboardType="numeric"
-          />
-
-          <Button mode="contained" onPress={handleSubmit} style={{ marginTop: 32 }}>
+          <View>
+            <TextInput
+              label="Hour Rate"
+              mode="outlined"
+              value={values.hourRate}
+              onChangeText={handleChange('hourRate')}
+              onBlur={handleBlur('hourRate')}
+              keyboardType="numeric"
+              error={errors?.hourRate}
+            />
+            {errors?.hourRate && (
+              <HelperText type="error" visible={errors?.hourRate}>
+                {errors.hourRate}
+              </HelperText>
+            )}
+          </View>
+          <View>
+            <TextInput
+              label="Day Rate"
+              mode="outlined"
+              value={values.dayRate}
+              onChangeText={handleChange('dayRate')}
+              onBlur={handleBlur('dayRate')}
+              keyboardType="numeric"
+              error={errors?.dayRate}
+            />
+            {errors?.dayRate && (
+              <HelperText type="error" visible={errors?.dayRate}>
+                {errors.dayRate}
+              </HelperText>
+            )}
+          </View>
+          <View>
+            <TextInput
+              label="Month Rate"
+              mode="outlined"
+              value={values.monthRate}
+              onChangeText={handleChange('monthRate')}
+              onBlur={handleBlur('monthRate')}
+              keyboardType="numeric"
+              error={errors?.monthRate}
+            />
+            {errors?.monthRate && (
+              <HelperText type="error" visible={errors?.monthRate}>
+                {errors.monthRate}
+              </HelperText>
+            )}
+          </View>
+          <Button
+            mode="contained"
+            onPress={handleSubmit}
+            style={{ marginTop: 32 }}
+            disabled={!isValid}>
             Save
           </Button>
         </View>
